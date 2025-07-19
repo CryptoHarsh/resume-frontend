@@ -6,8 +6,6 @@
     <title>AI Resume Formatter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- The docx library script -->
-    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js" defer></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         .file-input-label { transition: all 0.3s ease; }
@@ -55,13 +53,14 @@
         </div>
     </div>
     
+    <!-- FINAL FIX: All scripts are moved to the end of the body for reliable loading -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
     
     <script>
-        // --- FINAL FIX: Wait for the entire window, including all scripts, to load ---
-        window.onload = function() {
-
+        // Because the script is at the end of the body, we don't need to wait for window.onload
+        (function() {
             const BACKEND_URL = "https://my-resume-api-ynix.onrender.com";
 
             pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js`;
@@ -160,7 +159,7 @@
             
             function generateDocxInBrowser() {
                 if (typeof docx === 'undefined') {
-                    showError("Document generator is still loading. Please wait a moment and try again.");
+                    showError("Document generator library failed to load. Please check your internet connection and refresh the page.");
                     return;
                 }
 
@@ -318,7 +317,7 @@
             });
 
             downloadButton.addEventListener('click', generateDocxInBrowser);
-        };
+        })();
     </script>
 </body>
 </html>
