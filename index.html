@@ -6,8 +6,8 @@
     <title>AI Resume Formatter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- FINAL FIX: Switched to a more reliable CDN for the docx library -->
-    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+    <!-- FINAL FIX: Added the 'defer' attribute to ensure the script loads reliably -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js" defer></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         .file-input-label { transition: all 0.3s ease; }
@@ -159,6 +159,11 @@
         
         // --- NEW: This function creates the .docx file in the browser ---
         function generateDocxInBrowser() {
+            if (typeof docx === 'undefined') {
+                showError("Document generator is still loading. Please wait a moment and try again.");
+                return;
+            }
+
             const textContent = document.getElementById('formatted-resume-output').textContent;
             if (!textContent) {
                 showError("Cannot download an empty resume.");
