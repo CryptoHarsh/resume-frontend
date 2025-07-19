@@ -6,7 +6,7 @@
     <title>AI Resume Formatter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- The docx library script with defer to help with loading order -->
+    <!-- The docx library script -->
     <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js" defer></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -59,8 +59,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
     
     <script>
-        // --- FINAL FIX: Wait for the entire page and all scripts to load before running our code ---
-        document.addEventListener("DOMContentLoaded", function() {
+        // --- FINAL FIX: Wait for the entire window, including all scripts, to load ---
+        window.onload = function() {
 
             const BACKEND_URL = "https://my-resume-api-ynix.onrender.com";
 
@@ -318,7 +318,7 @@
             });
 
             downloadButton.addEventListener('click', generateDocxInBrowser);
-        });
+        };
     </script>
 </body>
 </html>
