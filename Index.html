@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Formatter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .file-input-label {
+            transition: all 0.3s ease;
+        }
+        .file-input-label:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        #loader {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-10">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Maxonic AI Resume Formatter</h1>
+            <p class="text-gray-600 mt-2">Upload a resume (PDF or Word .docx). The AI will intelligently parse, reformat, and structure it.</p>
+        </div>
+
+        <div id="upload-section" class="text-center mb-6">
+            <input type="file" id="file-input" class="hidden" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+            <label for="file-input" class="file-input-label cursor-pointer inline-block bg-indigo-600 text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Upload Resume (PDF or Word)
+            </label>
+            <p id="file-name" class="text-sm text-gray-500 mt-3"></p>
+        </div>
+        
+        <div class="text-center mb-6">
+            <button id="format-button" class="bg-green-500 text-white font-bold py-3 px-10 rounded-lg shadow-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300" disabled>
+                Format Resume
+            </button>
+        </div>
+
+        <div id="status-section" class="text-center my-4 hidden">
+            <div id="loader" class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mx-auto"></div>
+            <p id="status-text" class="text-gray-600 mt-3 font-medium"></p>
+        </div>
+        
+        <div id="error-box" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative my-4" role="alert">
+            <strong class="font-bold">Error:</strong>
+            <span id="error-message" class="block sm:inline">Something went wrong.</span>
+        </div>
+
+        <div id="result-section" class="hidden">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 class="text-2xl font-bold text-gray-800">Formatted Resume</h2>
+                <button id="download-button" class="bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg id="download-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+                         <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    <span id="download-text">Download .docx</span>
+                </button>
+            </div>
+            <div id="formatted-resume-output" class="bg-gray-50 p-6 rounded-lg whitespace-pre-wrap text-sm leading-relaxed"></div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
+    
+    <script>
+        // --- IMPORTANT ---
+        // After you deploy your backend on Render, paste its URL here!
+        const BACKEND_URL = "https://your-backend-name.onrender.com";
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js`;
+
+        const fileInput = document.getElementById('file-input');
+        const fileNameDisplay = document.getElementById('file-name');
+        const formatButton = document.getElementById('format-button');
+        const statusSection = document.getElementById('status-section');
+        const statusText = document.getElementById('status-text');
+        const resultSection = document.getElementById('result-section');
+        const formattedOutput = document.getElementById('formatted-resume-output');
+        const downloadButton = document.getElementById('download-button');
+        const errorBox = document.getElementById('error-box');
+        const errorMessage = document.getElementById('error-message');
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorBox.classList.remove('hidden');
+        }
+
+        async function extractTextFromPdf(file) {
+            const fileReader = new FileReader();
+            return new Promise((resolve, reject) => {
+                fileReader.onload = async function() {
+                    try {
+                        const typedarray = new Uint8Array(this.result);
+                        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+                        let fullText = "";
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            fullText += pageText + "\n\n";
+                        }
+                        resolve(fullText.trim());
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                fileReader.onerror = reject;
+                fileReader.readAsArrayBuffer(file);
+            });
+        }
+        
+        async function extractTextFromDocx(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    try {
+                        const arrayBuffer = event.target.result;
+                        const result = await mammoth.extractRawText({ arrayBuffer });
+                        resolve(result.value);
+                    } catch (err) {
+                        if (err.message && err.message.includes("Can't find end of central directory")) {
+                            reject(new Error("This document format is not supported. Please use a modern .docx file. Old .doc files are not compatible."));
+                        } else {
+                            reject(err);
+                        }
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        function cleanRawText(rawText) {
+            if (!rawText) return "";
+            let cleaned = rawText;
+            cleaned = cleaned.replace(/\*\*/g, '');
+            cleaned = cleaned.replace(/☐/g, '');
+            cleaned = cleaned.replace(/[’‘]/g, "'");
+            cleaned = cleaned.replace(/[“”]/g, '"');
+            return cleaned;
+        }
+
+        async function formatResumeWithAI(cleanedText) {
+            const response = await fetch(`${BACKEND_URL}/format-resume-ai`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cleanedText: cleanedText })
+            });
+            
+            const result = await response.json();
+
+            if (!response.ok) {
+                console.error("API Error Body:", result);
+                throw new Error(`Request failed: ${response.status} - ${result.error || 'Unknown server error'}`);
+            }
+            
+            if (result.formattedText) {
+                return result.formattedText;
+            } else {
+               console.error("Server did not return formatted text:", result);
+               throw new Error(`Formatting failed. The server returned an empty response.`);
+            }
+        }
+
+        async function downloadRealDocxFile() {
+            const textContent = formattedOutput.textContent;
+            if (!textContent || textContent.trim() === "") {
+                showError("Cannot download an empty resume. Please format a resume first.");
+                return;
+            }
+            
+            const downloadBtnText = document.getElementById('download-text');
+            downloadButton.disabled = true;
+            downloadBtnText.textContent = 'Generating...';
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/create-resume`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ resumeText: textContent }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Server error: ${errorData.error || response.statusText}`);
+                }
+
+                const blob = await response.blob();
+                const candidateName = textContent.split('\n')[0]?.trim() || 'Formatted_Resume';
+                const filename = `${candidateName.replace(/ /g, '_')}_Resume.docx`;
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+
+            } catch (error) {
+                console.error('Failed to download .docx file:', error);
+                showError(`Could not generate the .docx file: ${error.message}`);
+            } finally {
+                downloadButton.disabled = false;
+                downloadBtnText.textContent = 'Download .docx';
+            }
+        }
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const fileName = file.name.toLowerCase();
+                if (fileName.endsWith('.pdf') || fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
+                    fileNameDisplay.textContent = `Selected: ${file.name}`;
+                    formatButton.disabled = false;
+                    errorBox.classList.add('hidden');
+                    resultSection.classList.add('hidden');
+                } else {
+                    showError('Unsupported file type. Please upload a PDF or Word (.docx, .doc) file.');
+                    fileNameDisplay.textContent = '';
+                    formatButton.disabled = true;
+                }
+            }
+        });
+
+        formatButton.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            formatButton.disabled = true;
+            statusSection.classList.remove('hidden');
+            resultSection.classList.add('hidden');
+            errorBox.classList.add('hidden');
+            
+            try {
+                statusText.textContent = 'Extracting text from file...';
+                const fileName = file.name.toLowerCase();
+                let rawText;
+                if (fileName.endsWith('.pdf')) {
+                    rawText = await extractTextFromPdf(file);
+                } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
+                    rawText = await extractTextFromDocx(file);
+                } else {
+                    throw new Error("Unsupported file type.");
+                }
+
+                if (!rawText || rawText.trim() === '') {
+                    throw new Error("Could not extract any text from the document.");
+                }
+
+                statusText.textContent = 'Cleaning text...';
+                const cleanedText = cleanRawText(rawText);
+
+                statusText.textContent = 'Asking AI to format resume... This may take a moment.';
+                const finalFormattedResume = await formatResumeWithAI(cleanedText);
+                
+                statusText.textContent = 'Done!';
+                formattedOutput.textContent = finalFormattedResume;
+                resultSection.classList.remove('hidden');
+
+            } catch (err) {
+                console.error("An error occurred:", err);
+                showError(err.message || `An unexpected error occurred.`);
+            } finally {
+                statusSection.classList.add('hidden');
+                formatButton.disabled = false;
+            }
+        });
+
+        downloadButton.addEventListener('click', downloadRealDocxFile);
+    </script>
+</body>
+</html>
